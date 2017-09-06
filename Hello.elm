@@ -12,13 +12,20 @@ import Material
 import Material.Scheme
 import Material.Button as Button
 import Material.Options as Options exposing (css)
+import Json.Decode as Decode exposing (..)
+import Json.Encode as Encode exposing (..)
+import Http
 
 
 -- MODEL
 
 
 type alias Model =
-    { count : Int
+    { username: String,
+    password: String,
+    token: String,
+    errorMsg: String,
+    count : Int
     , mdl :
         Material.Model
         -- Boilerplate: model store for any and all Mdl components you use.
@@ -27,13 +34,25 @@ type alias Model =
 
 model : Model
 model =
-    { count = 0
+    {
+     username = "",
+     password = "",
+     token = "",
+     errorMsg = "",
+    count = 0
     , mdl =
         Material.model
         -- Boilerplate: Always use this initial Mdl model store.
     }
 
+init : Maybe Model -> ( Model, Cmd Msg )
+init model =
+    case model of
+        Just model ->
+            ( model )
 
+        Nothing ->
+            ( Model "" "" "" "" "" "" )
 
 -- ACTION, UPDATE
 
@@ -43,7 +62,41 @@ type Msg
     | Reset
     | Mdl (Material.Msg Msg)
 
+-- API requests URLS
 
+api : String
+api =
+    "http://localhost:3001/"
+
+-- POST
+
+registerUrl : String
+registerUrl =
+    api ++ "users"
+
+authUser : Model -> String -> Http.Request String
+authUser model apiUrl =
+    let
+        body =
+            model
+                |> userEncoder
+                |> Http.jsonBody
+    in
+        Http.post apiUrl body tokenDecoder
+
+-- Encode user to construct POST request body (for Register and Log In)
+
+userEncoder : Model -> Encode.Value
+userEncoder model =
+    Encode.object
+        [ ( "username", Encode.string model.username )
+        , ( "password", Encode.string model.password )
+        ]
+
+-- Decode POST response to get access token
+tokenDecoder : Decoder String
+tokenDecoder =
+    Decode.field "access_token" Decode.string
 
 -- Boilerplate: Msg clause for internal Mdl messages.
 
@@ -122,7 +175,7 @@ view model =
 main : Program Never Model Msg
 main =
     Html.program
-        { init = ( model, Cmd.none )
+        { init = init
         , view = view
         , subscriptions = always Sub.none
         , update = update
